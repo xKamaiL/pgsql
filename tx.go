@@ -2,9 +2,9 @@ package pgsql
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/lib/pq"
 )
 
@@ -13,12 +13,12 @@ var ErrAbortTx = errors.New("pgsql: abort tx")
 
 // BeginTxer type
 type BeginTxer interface {
-	BeginTx(context.Context, *sql.TxOptions) (*sql.Tx, error)
+	BeginTx(context.Context, pgx.TxOptions) (pgx.Tx, error)
 }
 
 // TxOptions is the transaction options
 type TxOptions struct {
-	sql.TxOptions
+	pgx.TxOptions
 	MaxAttempts int
 }
 
@@ -29,7 +29,7 @@ const (
 // RunInTx runs fn inside retryable transaction.
 //
 // see RunInTxContext for more info.
-func RunInTx(db BeginTxer, opts *TxOptions, fn func(*sql.Tx) error) error {
+func RunInTx(db BeginTxer, opts *TxOptions, fn func(pgx.Tx) error) error {
 	return RunInTxContext(context.Background(), db, opts, fn)
 }
 
@@ -38,11 +38,9 @@ func RunInTx(db BeginTxer, opts *TxOptions, fn func(*sql.Tx) error) error {
 //
 // RunInTxContext DO NOT handle panic.
 // But when panic, it will rollback the transaction.
-func RunInTxContext(ctx context.Context, db BeginTxer, opts *TxOptions, fn func(*sql.Tx) error) error {
+func RunInTxContext(ctx context.Context, db BeginTxer, opts *TxOptions, fn func(pgx.Tx) error) error {
 	option := TxOptions{
-		TxOptions: sql.TxOptions{
-			Isolation: sql.LevelSerializable,
-		},
+		TxOptions:   pgx.TxOptions{},
 		MaxAttempts: defaultMaxAttempts,
 	}
 
@@ -50,27 +48,25 @@ func RunInTxContext(ctx context.Context, db BeginTxer, opts *TxOptions, fn func(
 		if opts.MaxAttempts > 0 {
 			option.MaxAttempts = opts.MaxAttempts
 		}
+		// default isolation level is pgx.ReadCommitted
+		// which is empty string
 		option.TxOptions = opts.TxOptions
 
-		// override default isolation level to serializable
-		if opts.Isolation == sql.LevelDefault {
-			option.Isolation = sql.LevelSerializable
-		}
 	}
 
 	f := func() error {
-		tx, err := db.BeginTx(ctx, &option.TxOptions)
+		tx, err := db.BeginTx(ctx, option.TxOptions)
 		if err != nil {
 			return err
 		}
 		// use defer to also rollback when panic
-		defer tx.Rollback()
+		defer tx.Rollback(ctx)
 
 		err = fn(tx)
 		if err != nil {
 			return err
 		}
-		return tx.Commit()
+		return tx.Commit(ctx)
 	}
 
 	var err error

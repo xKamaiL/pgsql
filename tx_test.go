@@ -1,7 +1,7 @@
 package pgsql_test
 
 import (
-	"database/sql"
+	"context"
 	"fmt"
 	"log"
 	"math/rand"
@@ -9,12 +9,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+
 	"github.com/acoshift/pgsql"
 )
 
 func TestTx(t *testing.T) {
 	db := open(t)
-	_, err := db.Exec(`
+	_, err := db.Exec(context.Background(), `
 		drop table if exists test_pgsql_tx;
 		create table test_pgsql_tx (
 			id int primary key,
@@ -30,30 +32,37 @@ func TestTx(t *testing.T) {
 	if err != nil {
 		t.Fatalf("prepare table error; %v", err)
 	}
-	defer db.Exec(`drop table test_pgsql_tx`)
-	db.SetMaxOpenConns(30)
+	defer db.Exec(context.Background(), `drop table test_pgsql_tx`)
+	//db.SetMaxOpenConns(30)
+	db.Config().MaxConns = 30
 
-	opts := &pgsql.TxOptions{MaxAttempts: 10}
+	opts := &pgsql.TxOptions{
+		TxOptions: pgx.TxOptions{
+			IsoLevel: pgx.Serializable,
+		},
+		MaxAttempts: 10,
+	}
 
 	deposit := func(balance int) error {
-		return pgsql.RunInTx(db, opts, func(tx *sql.Tx) error {
+		return pgsql.RunInTx(db, opts, func(tx pgx.Tx) error {
 			var err error
+			ctx := context.Background()
 
 			// log.Println("deposit", balance)
 			var acc0, acc1 int
-			err = tx.QueryRow(`select value from test_pgsql_tx where id = 0`).Scan(&acc0)
+			err = tx.QueryRow(ctx, `select value from test_pgsql_tx where id = 0`).Scan(&acc0)
 			if err != nil {
 				return err
 			}
-			err = tx.QueryRow(`select value from test_pgsql_tx where id = 1`).Scan(&acc1)
+			err = tx.QueryRow(ctx, `select value from test_pgsql_tx where id = 1`).Scan(&acc1)
 			if err != nil {
 				return err
 			}
-			_, err = tx.Exec(`update test_pgsql_tx set value = $1 where id = 0`, acc0-balance)
+			_, err = tx.Exec(ctx, `update test_pgsql_tx set value = $1 where id = 0`, acc0-balance)
 			if err != nil {
 				return err
 			}
-			_, err = tx.Exec(`update test_pgsql_tx set value = $1 where id = 1`, acc1+balance)
+			_, err = tx.Exec(ctx, `update test_pgsql_tx set value = $1 where id = 1`, acc1+balance)
 			if err != nil {
 				return err
 			}
@@ -61,27 +70,27 @@ func TestTx(t *testing.T) {
 		})
 	}
 	withdraw := func(balance int) error {
-		return pgsql.RunInTx(db, opts, func(tx *sql.Tx) error {
+		return pgsql.RunInTx(db, opts, func(tx pgx.Tx) error {
 			var err error
-
+			ctx := context.Background()
 			// log.Println("withdraw", balance)
 			var acc0, acc1 int
-			err = tx.QueryRow(`select value from test_pgsql_tx where id = 1`).Scan(&acc1)
+			err = tx.QueryRow(ctx, `select value from test_pgsql_tx where id = 1`).Scan(&acc1)
 			if err != nil {
 				return err
 			}
 			if acc1 < balance {
 				return fmt.Errorf("not enough balance to withdraw")
 			}
-			err = tx.QueryRow(`select value from test_pgsql_tx where id = 0`).Scan(&acc0)
+			err = tx.QueryRow(ctx, `select value from test_pgsql_tx where id = 0`).Scan(&acc0)
 			if err != nil {
 				return err
 			}
-			_, err = tx.Exec(`update test_pgsql_tx set value = $1 where id = 0`, acc0+balance)
+			_, err = tx.Exec(ctx, `update test_pgsql_tx set value = $1 where id = 0`, acc0+balance)
 			if err != nil {
 				return err
 			}
-			_, err = tx.Exec(`update test_pgsql_tx set value = $1 where id = 1`, acc1-balance)
+			_, err = tx.Exec(ctx, `update test_pgsql_tx set value = $1 where id = 1`, acc1-balance)
 			if err != nil {
 				return err
 			}
@@ -89,27 +98,28 @@ func TestTx(t *testing.T) {
 		})
 	}
 	transfer := func(balance int) error {
-		return pgsql.RunInTx(db, opts, func(tx *sql.Tx) error {
+		return pgsql.RunInTx(db, opts, func(tx pgx.Tx) error {
 			var err error
+			ctx := context.Background()
 
 			// log.Println("transfer", balance)
 			var acc1, acc2 int
-			err = tx.QueryRow(`select value from test_pgsql_tx where id = 1`).Scan(&acc1)
+			err = tx.QueryRow(ctx, `select value from test_pgsql_tx where id = 1`).Scan(&acc1)
 			if err != nil {
 				return err
 			}
 			if acc1 < balance {
 				return fmt.Errorf("not enough balance to transfer")
 			}
-			err = tx.QueryRow(`select value from test_pgsql_tx where id = 2`).Scan(&acc2)
+			err = tx.QueryRow(ctx, `select value from test_pgsql_tx where id = 2`).Scan(&acc2)
 			if err != nil {
 				return err
 			}
-			_, err = tx.Exec(`update test_pgsql_tx set value = $1 where id = 1`, acc1-balance)
+			_, err = tx.Exec(ctx, `update test_pgsql_tx set value = $1 where id = 1`, acc1-balance)
 			if err != nil {
 				return err
 			}
-			_, err = tx.Exec(`update test_pgsql_tx set value = $1 where id = 2`, acc2+balance)
+			_, err = tx.Exec(ctx, `update test_pgsql_tx set value = $1 where id = 2`, acc2+balance)
 			if err != nil {
 				return err
 			}
@@ -140,7 +150,7 @@ func TestTx(t *testing.T) {
 	wg.Wait()
 
 	var result int
-	err = db.QueryRow(`select sum(value) from test_pgsql_tx`).Scan(&result)
+	err = db.QueryRow(context.Background(), `select sum(value) from test_pgsql_tx`).Scan(&result)
 	if err != nil {
 		t.Fatalf("query result error; %v", err)
 	}

@@ -92,6 +92,7 @@ func TestIsQueryCanceled(t *testing.T) {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	time.AfterFunc(100*time.Millisecond, cancel)
-	_, err := db.ExecContext(ctx, "select pg_sleep(1)")
+	_, err := db.Exec(ctx, "select pg_sleep(1)")
+
 	assert.True(t, pgsql.IsQueryCanceled(err))
 }

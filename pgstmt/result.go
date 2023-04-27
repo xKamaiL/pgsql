@@ -4,6 +4,9 @@ import (
 	"context"
 	"database/sql"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
+
 	"github.com/acoshift/pgsql"
 	"github.com/acoshift/pgsql/pgctx"
 )
@@ -45,15 +48,15 @@ func (r *Result) ExecContext(ctx context.Context, f func(context.Context, string
 	return f(ctx, r.query, r.args...)
 }
 
-func (r *Result) QueryRowWith(ctx context.Context) *sql.Row {
+func (r *Result) QueryRowWith(ctx context.Context) pgx.Row {
 	return pgctx.QueryRow(ctx, r.query, r.args...)
 }
 
-func (r *Result) QueryWith(ctx context.Context) (*sql.Rows, error) {
+func (r *Result) QueryWith(ctx context.Context) (pgx.Rows, error) {
 	return pgctx.Query(ctx, r.query, r.args...)
 }
 
-func (r *Result) ExecWith(ctx context.Context) (sql.Result, error) {
+func (r *Result) ExecWith(ctx context.Context) (pgconn.CommandTag, error) {
 	return pgctx.Exec(ctx, r.query, r.args...)
 }
 

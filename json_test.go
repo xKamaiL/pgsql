@@ -1,6 +1,7 @@
 package pgsql_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/acoshift/pgsql"
@@ -9,7 +10,7 @@ import (
 func TestJSON(t *testing.T) {
 	db := open(t)
 
-	_, err := db.Exec(`
+	_, err := db.Exec(context.Background(), `
 		drop table if exists test_pgsql_json;
 		create table test_pgsql_json (
 			id int primary key,
@@ -19,7 +20,7 @@ func TestJSON(t *testing.T) {
 	if err != nil {
 		t.Fatalf("prepare table error; %v", err)
 	}
-	defer db.Exec(`drop table test_pgsql_json`)
+	defer db.Exec(context.Background(), `drop table test_pgsql_json`)
 
 	var obj struct {
 		A string
@@ -30,7 +31,7 @@ func TestJSON(t *testing.T) {
 	obj.B = 7
 
 	var ok bool
-	err = db.QueryRow(`
+	err = db.QueryRow(context.Background(), `
 		insert into test_pgsql_json (id, value)
 		values (1, $1)
 		returning value is not null
@@ -44,7 +45,7 @@ func TestJSON(t *testing.T) {
 
 	obj.A = ""
 	obj.B = 0
-	err = db.QueryRow(`
+	err = db.QueryRow(context.Background(), `
 		select value
 		from test_pgsql_json
 		where id = 1
@@ -58,7 +59,7 @@ func TestJSON(t *testing.T) {
 
 	obj.A = ""
 	obj.B = 0
-	err = db.QueryRow(`select null`).Scan(pgsql.JSON(&obj))
+	err = db.QueryRow(context.Background(), `select null`).Scan(pgsql.JSON(&obj))
 	if err != nil {
 		t.Fatalf("sql error; %v", err)
 	}

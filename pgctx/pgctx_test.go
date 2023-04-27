@@ -7,26 +7,27 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/pashagolub/pgxmock/v2"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/acoshift/pgsql"
 	"github.com/acoshift/pgsql/pgctx"
 )
 
-func newCtx(t *testing.T) (context.Context, sqlmock.Sqlmock) {
+func newCtx(t *testing.T) (context.Context, pgxmock.PgxPoolIface) {
 	t.Helper()
-
-	db, mock, err := sqlmock.New()
+	mock, err := pgxmock.NewPool()
 	assert.NoError(t, err)
-	return pgctx.NewContext(context.Background(), db), mock
+	return pgctx.NewContext(context.Background(), mock), mock
 }
 
 func TestNewContext(t *testing.T) {
 	t.Parallel()
 
 	assert.NotPanics(t, func() {
-		newCtx(t)
+		db, err := pgxmock.NewPool()
+		assert.NoError(t, err)
+		pgctx.NewContext(context.Background(), db)
 	})
 }
 
@@ -36,23 +37,23 @@ func TestNewKeyContext(t *testing.T) {
 	t.Parallel()
 
 	assert.NotPanics(t, func() {
-		db, _, err := sqlmock.New()
+		mock, err := pgxmock.NewPool()
 		assert.NoError(t, err)
-		ctx := pgctx.NewKeyContext(context.Background(), testKey1{}, db)
+		ctx := pgctx.NewKeyContext(context.Background(), testKey1{}, mock)
 		assert.NotNil(t, ctx)
+
 	})
 }
 
 func TestMiddleware(t *testing.T) {
 	t.Parallel()
-
-	db, _, err := sqlmock.New()
+	mock, err := pgxmock.NewPool()
 	assert.NoError(t, err)
 
 	called := false
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest("GET", "/", nil)
-	pgctx.Middleware(db)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	pgctx.Middleware(mock)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		called = true
 		ctx := r.Context()
 		assert.NotPanics(t, func() {
@@ -66,12 +67,13 @@ func TestMiddleware(t *testing.T) {
 		})
 	})).ServeHTTP(w, r)
 	assert.True(t, called)
+
 }
 
 func TestKeyMiddleware(t *testing.T) {
 	t.Parallel()
 
-	db, _, err := sqlmock.New()
+	db, err := pgxmock.NewPool()
 	assert.NoError(t, err)
 
 	called := false
