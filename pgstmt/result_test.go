@@ -21,8 +21,8 @@ func TestResult_QueryAllWith(t *testing.T) {
 	ctx = pgctx.NewContext(ctx, db)
 
 	type v struct {
-		a int
-		b int
+		a string
+		b string
 	}
 
 	var vs []*v
@@ -46,9 +46,9 @@ func TestResult_QueryAllWith(t *testing.T) {
 	assert.NoError(t, err)
 	if assert.Len(t, vs, 3) {
 		assert.EqualValues(t, []*v{
-			{1, 2},
-			{3, 4},
-			{5, 6},
+			{"1", "2"},
+			{"3", "4"},
+			{"5", "6"},
 		}, vs)
 	}
 }
