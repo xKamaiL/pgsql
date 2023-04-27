@@ -36,6 +36,6 @@ func (v *jsonValue) Scan(src any) error {
 	return json.Unmarshal(b, v.value)
 }
 
-func (v jsonValue) Value() (driver.Value, error) {
+func (v *jsonValue) Value() (driver.Value, error) {
 	return json.Marshal(v.value)
 }
