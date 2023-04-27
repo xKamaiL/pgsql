@@ -167,3 +167,19 @@ func Exec(ctx context.Context, query string, args ...any) (pgconn.CommandTag, er
 func Iter(ctx context.Context, iter pgsql.Iterator, query string, args ...any) error {
 	return pgsql.IterContext(ctx, q(ctx), iter, query, args...)
 }
+
+func Collect[T any](ctx context.Context, sql string, args ...any) ([]*T, error) {
+	rows, err := q(ctx).Query(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	return pgx.CollectRows(rows, pgx.RowToAddrOfStructByPos[T])
+}
+
+func CollectOne[T any](ctx context.Context, sql string, args ...any) (*T, error) {
+	rows, err := q(ctx).Query(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	return pgx.CollectOneRow(rows, pgx.RowToAddrOfStructByPos[T])
+}
