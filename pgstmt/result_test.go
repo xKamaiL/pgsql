@@ -6,9 +6,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/acoshift/pgsql"
-	"github.com/acoshift/pgsql/pgctx"
-	"github.com/acoshift/pgsql/pgstmt"
+	"github.com/xkamail/pgsql"
+	"github.com/xkamail/pgsql/pgctx"
+	"github.com/xkamail/pgsql/pgstmt"
 )
 
 func TestResult_QueryAllWith(t *testing.T) {

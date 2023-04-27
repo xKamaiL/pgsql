@@ -8,7 +8,7 @@ import (
 	"github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/acoshift/pgsql"
+	"github.com/xkamail/pgsql"
 )
 
 func TestIsUniqueViolation(t *testing.T) {

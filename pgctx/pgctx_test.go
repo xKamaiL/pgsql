@@ -10,8 +10,8 @@ import (
 	"github.com/pashagolub/pgxmock/v2"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/acoshift/pgsql"
-	"github.com/acoshift/pgsql/pgctx"
+	"github.com/xkamail/pgsql"
+	"github.com/xkamail/pgsql/pgctx"
 )
 
 func newCtx(t *testing.T) (context.Context, pgxmock.PgxPoolIface) {

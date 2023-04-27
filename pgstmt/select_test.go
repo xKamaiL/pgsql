@@ -6,7 +6,7 @@ import (
 	"github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/acoshift/pgsql/pgstmt"
+	"github.com/xkamail/pgsql/pgstmt"
 )
 
 func TestSelect(t *testing.T) {

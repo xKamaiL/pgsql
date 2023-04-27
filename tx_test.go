@@ -11,7 +11,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/acoshift/pgsql"
+	"github.com/xkamail/pgsql"
 )
 
 func TestTx(t *testing.T) {

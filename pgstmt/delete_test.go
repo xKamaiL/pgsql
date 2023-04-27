@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/acoshift/pgsql/pgstmt"
+	"github.com/xkamail/pgsql/pgstmt"
 )
 
 func TestDelete(t *testing.T) {

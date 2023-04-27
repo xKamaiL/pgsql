@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/acoshift/pgsql"
+	"github.com/xkamail/pgsql"
 )
 
 func TestTime(t *testing.T) {

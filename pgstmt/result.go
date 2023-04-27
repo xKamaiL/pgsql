@@ -7,8 +7,8 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 
-	"github.com/acoshift/pgsql"
-	"github.com/acoshift/pgsql/pgctx"
+	"github.com/xkamail/pgsql"
+	"github.com/xkamail/pgsql/pgctx"
 )
 
 type Result struct {

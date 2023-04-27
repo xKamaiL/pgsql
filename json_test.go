@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/acoshift/pgsql"
+	"github.com/xkamail/pgsql"
 )
 
 func TestJSON(t *testing.T) {
