@@ -98,6 +98,69 @@ func TestKeyMiddleware(t *testing.T) {
 	assert.True(t, called)
 }
 
+func TestRunTx(t *testing.T) {
+	t.Parallel()
+	type Result struct {
+		a int
+	}
+	t.Run("Committed", func(t *testing.T) {
+		ctx, mock := newCtx(t)
+
+		called := false
+		mock.ExpectBegin()
+		mock.ExpectCommit()
+		result, err := pgctx.RunTx(ctx, func(ctx context.Context) (*Result, error) {
+			called = true
+			return &Result{a: 1}, nil
+		})
+		assert.NotNil(t, result)
+		assert.Equal(t, result.a, 1)
+		assert.NoError(t, err)
+		assert.True(t, called)
+	})
+
+	t.Run("Rollback with error", func(t *testing.T) {
+		ctx, mock := newCtx(t)
+
+		mock.ExpectBegin()
+		mock.ExpectRollback()
+		var retErr = fmt.Errorf("error")
+		result, err := pgctx.RunTx(ctx, func(ctx context.Context) (*Result, error) {
+			return nil, retErr
+		})
+		assert.Nil(t, result)
+		assert.Error(t, err)
+		assert.Equal(t, retErr, err)
+	})
+
+	t.Run("Abort Tx", func(t *testing.T) {
+		ctx, mock := newCtx(t)
+
+		mock.ExpectBegin()
+		mock.ExpectCommit()
+		result, err := pgctx.RunTx(ctx, func(ctx context.Context) (*Result, error) {
+			return nil, pgsql.ErrAbortTx
+		})
+		assert.Nil(t, result)
+		assert.NoError(t, err)
+	})
+
+	t.Run("Nested Tx", func(t *testing.T) {
+		ctx, mock := newCtx(t)
+
+		mock.ExpectBegin()
+		mock.ExpectCommit()
+		result, err := pgctx.RunTx(ctx, func(ctx context.Context) (*Result, error) {
+			return pgctx.RunTx(ctx, func(ctx context.Context) (*Result, error) {
+				return &Result{a: 2}, nil
+			})
+		})
+		assert.NotNil(t, result)
+		assert.Equal(t, result.a, 2)
+		assert.NoError(t, err)
+	})
+}
+
 func TestRunInTx(t *testing.T) {
 	t.Parallel()
 
@@ -205,4 +268,5 @@ func TestCommitted(t *testing.T) {
 		})
 		assert.NoError(t, err)
 	})
+
 }

@@ -71,6 +71,42 @@ type wrapTx struct {
 
 var _ Queryer = &wrapTx{}
 
+func RunTx[R any](ctx context.Context, f func(ctx context.Context) (*R, error)) (*R, error) {
+	return BeginTxOption[R](ctx, nil, f)
+}
+
+// BeginTxOption is a shortcut function that runs f in a transaction.
+// and returns its result.
+func BeginTxOption[R any](ctx context.Context, opt *pgsql.TxOptions, f func(ctx context.Context) (*R, error)) (*R, error) {
+	if IsInTx(ctx) {
+		return f(ctx)
+	}
+
+	db := ctx.Value(ctxKeyDB{}).(pgsql.BeginTxer)
+	var pTx wrapTx
+	abort := false
+	var result *R
+	err := pgsql.RunInTxContext(ctx, db, opt, func(tx pgx.Tx) error {
+		pTx = wrapTx{Tx: tx}
+		ctx := context.WithValue(ctx, ctxKeyQueryer{}, &pTx)
+		r, err := f(ctx)
+		result = r
+		if errors.Is(err, pgsql.ErrAbortTx) {
+			abort = true
+		}
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+	if !abort && len(pTx.onCommitted) > 0 {
+		for _, f := range pTx.onCommitted {
+			f(ctx)
+		}
+	}
+	return result, nil
+}
+
 // RunInTxOptions starts sql tx if not started
 func RunInTxOptions(ctx context.Context, opt *pgsql.TxOptions, f func(ctx context.Context) error) error {
 	if IsInTx(ctx) {
