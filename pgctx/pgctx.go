@@ -72,7 +72,7 @@ type wrapTx struct {
 var _ Queryer = &wrapTx{}
 
 func RunTx[R any](ctx context.Context, f func(ctx context.Context) (*R, error)) (*R, error) {
-	return BeginTxOption[R](ctx, nil, f)
+	return BeginTxOption(ctx, nil, f)
 }
 
 // BeginTxOption is a shortcut function that runs f in a transaction.
