@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
 	"github.com/xkamail/pgsql"
 )
@@ -25,23 +24,25 @@ func TestNullInt64(t *testing.T) {
 			(0, 1),
 			(1, null);
 	`)
-	require.NoError(t, err)
-	defer db.Exec(context.Background(), `drop table test_pgsql_null_int64`)
+	if !assert.NoError(t, err) {
+		return
+	}
+	defer db.Exec(`drop table test_pgsql_null_int64`)
 
 	t.Run("Scan", func(t *testing.T) {
 		{
 			ctx := context.Background()
 			var p int64
-			err = db.QueryRow(ctx, `select value from test_pgsql_null_int64 where id = 0`).Scan(pgsql.NullInt64(&p))
-			require.NoError(t, err)
+			err = db.QueryRow(`select value from test_pgsql_null_int64 where id = 0`).Scan(pgsql.NullInt64(&p))
+			assert.NoError(t, err)
 			assert.Equal(t, int64(1), p)
 		}
 
 		{
 			ctx := context.Background()
 			var p int64
-			err = db.QueryRow(ctx, `select value from test_pgsql_null_int64 where id = 1`).Scan(pgsql.NullInt64(&p))
-			require.NoError(t, err)
+			err = db.QueryRow(`select value from test_pgsql_null_int64 where id = 1`).Scan(pgsql.NullInt64(&p))
+			assert.NoError(t, err)
 			assert.Equal(t, int64(0), p)
 		}
 	})

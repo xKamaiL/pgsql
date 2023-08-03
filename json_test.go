@@ -17,8 +17,8 @@ func TestJSON(t *testing.T) {
 			value json
 		);
 	`)
-	if err != nil {
-		t.Fatalf("prepare table error; %v", err)
+	if !assert.NoError(t, err) {
+		return
 	}
 	defer db.Exec(context.Background(), `drop table test_pgsql_json`)
 
@@ -36,12 +36,8 @@ func TestJSON(t *testing.T) {
 		values (1, $1)
 		returning value is not null
 	`, pgsql.JSON(&obj)).Scan(&ok)
-	if err != nil {
-		t.Fatalf("sql error; %v", err)
-	}
-	if !ok {
-		t.Fatalf("invalid object valuer")
-	}
+	assert.NoError(t, err)
+	assert.True(t, ok)
 
 	obj.A = ""
 	obj.B = 0
@@ -50,17 +46,14 @@ func TestJSON(t *testing.T) {
 		from test_pgsql_json
 		where id = 1
 	`).Scan(pgsql.JSON(&obj))
-	if err != nil {
-		t.Fatalf("sql error; %v", err)
+	if !assert.NoError(t, err) {
+		return
 	}
-	if obj.A != "test" || obj.B != 7 {
-		t.Fatal("invalid object scanner")
-	}
+	assert.Equal(t, "test", obj.A)
+	assert.Equal(t, 7, obj.B)
 
 	obj.A = ""
 	obj.B = 0
-	err = db.QueryRow(context.Background(), `select null`).Scan(pgsql.JSON(&obj))
-	if err != nil {
-		t.Fatalf("sql error; %v", err)
-	}
+	err = db.QueryRow(`select null`).Scan(pgsql.JSON(&obj))
+	assert.NoError(t, err)
 }
