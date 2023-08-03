@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/acoshift/pgsql"
+	"github.com/xkamail/pgsql"
 )
 
 func TestScan(t *testing.T) {
